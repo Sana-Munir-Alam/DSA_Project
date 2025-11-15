@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
-#include <unordered_map>
 
 // Add to GameLogic.cpp
 Player* GameManager::findExistingPlayer(const std::string& name) {
@@ -1048,4 +1047,5 @@ void GameManager::saveResults() {
 
 // Explicit template instantiation
 template class CustomStack<int>;
+
 template class CustomQueue<Player*>;
