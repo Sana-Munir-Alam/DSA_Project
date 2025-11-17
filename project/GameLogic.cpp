@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <unordered_map>
 
 // Add to GameLogic.cpp
 Player* GameManager::findExistingPlayer(const std::string& name) {
@@ -208,9 +209,9 @@ AVLNode* AVLTree::insertNode(AVLNode* node, Player* player) {
     if (!node) return new AVLNode(player);
     
     if (isPlayerBetter(player, node->player)) {
-        node->left = insertNode(node->left, player);
-    } else {
         node->right = insertNode(node->right, player);
+    } else {
+        node->left = insertNode(node->left, player);
     }
     
     node->height = 1 + std::max(getHeight(node->left), getHeight(node->right));
@@ -218,25 +219,24 @@ AVLNode* AVLTree::insertNode(AVLNode* node, Player* player) {
     int balance = getBalance(node);
     
     // Left Left Case - inserted in left subtree of left child
-    if (balance > 1 && isPlayerBetter(player, node->left->player))
+    if (balance > 1 && !isPlayerBetter(player, node->left->player))
         return rightRotate(node);
     
     // Right Right Case - inserted in right subtree of right child  
-    if (balance < -1 && !isPlayerBetter(player, node->right->player))
+    if (balance < -1 && isPlayerBetter(player, node->right->player))
         return leftRotate(node);
     
     // Left Right Case - inserted in right subtree of left child
-    if (balance > 1 && !isPlayerBetter(player, node->left->player)) {
+    if (balance > 1 && isPlayerBetter(player, node->left->player)) {
         node->left = leftRotate(node->left);
         return rightRotate(node);
     }
     
     // Right Left Case - inserted in left subtree of right child
-    if (balance < -1 && isPlayerBetter(player, node->right->player)) {
+    if (balance < -1 && !isPlayerBetter(player, node->right->player)) {
         node->right = rightRotate(node->right);
         return leftRotate(node);
     }
-    
     return node;
 }
 
@@ -401,55 +401,6 @@ GameManager::~GameManager() {
         delete player;
     }
 }
-// void GameManager::initGame(int numPlayers, const std::vector<std::string>& names) {
-//     // Clear previous game state for new game
-//     players.clear();
-//     playerQueue = CustomQueue<Player*>();
-//     cards = CardList();
-//     gameOver = false;
-//     firstSelection = -1;
-//     secondSelection = -1;
-//     waitingForFlipBack = false;
-    
-//     // Load historical players
-//     std::vector<Player*> historicalPlayers = leaderboard.getInOrder();
-    
-//     // Create players - check for existing ones
-//     for (int i = 0; i < numPlayers; i++) {
-//         Player* gamePlayer = nullptr;
-        
-//         // Search in historical data
-//         for (auto historicalPlayer : historicalPlayers) {
-//             if (historicalPlayer->name == names[i]) {
-//                 // Existing player - copy historical data but reset current game stats
-//                 gamePlayer = new Player(historicalPlayer->name, i);
-//                 // DON'T copy wins - start fresh for this game
-//                 gamePlayer->gamesPlayed = historicalPlayer->gamesPlayed;
-//                 gamePlayer->totalScoreSum = historicalPlayer->totalScoreSum;
-//                 // Reset current game stats
-//                 gamePlayer->score = 0;
-//                 gamePlayer->streak = 0;
-//                 gamePlayer->undoLeft = 2;
-//                 gamePlayer->wins = 0;  // IMPORTANT: Start with 0 wins for new game
-//                 break;
-//             }
-//         }
-//         // New player
-//         if (!gamePlayer) {
-//             gamePlayer = new Player(names[i], i);
-//         }
-        
-//         players.push_back(gamePlayer);
-//     }
-    
-//     // Initialize queue
-//     for (auto player : players) {
-//         playerQueue.enqueue(player);
-//     }
-    
-//     currentPlayer = playerQueue.dequeue();
-//     initCards();
-// }
 
 void GameManager::initGame(int numPlayers, const std::vector<std::string>& names) {
     // Clear previous game state but preserve leaderboard
@@ -553,57 +504,6 @@ void GameManager::continueGame(const std::vector<std::string>& names) {
     currentPlayer = playerQueue.dequeue();
     initCards();
 }
-
-// void GameManager::continueGame(const std::vector<std::string>& names) {
-//     // Clear current game state but preserve leaderboard
-//     players.clear();
-//     playerQueue = CustomQueue<Player*>();
-//     cards = CardList();
-//     gameOver = false;
-//     firstSelection = -1;
-//     secondSelection = -1;
-//     waitingForFlipBack = false;
-    
-//     // Load historical players
-//     std::vector<Player*> historicalPlayers = leaderboard.getInOrder();
-    
-//     // Create players for current game
-//     for (int i = 0; i < names.size(); i++) {
-//         Player* gamePlayer = nullptr;
-        
-//         // Find in historical data
-//         for (auto historicalPlayer : historicalPlayers) {
-//             if (historicalPlayer->name == names[i]) {
-//                 // Create new player instance with accumulated historical data
-//                 gamePlayer = new Player(historicalPlayer->name, i);
-//                 // Copy ALL historical data
-//                 gamePlayer->wins = historicalPlayer->wins;
-//                 gamePlayer->gamesPlayed = historicalPlayer->gamesPlayed;
-//                 gamePlayer->totalScoreSum = historicalPlayer->totalScoreSum;
-//                 gamePlayer->streak = historicalPlayer->streak;
-//                 // Reset current game stats (they will be accumulated when game ends)
-//                 gamePlayer->score = 0;
-//                 gamePlayer->undoLeft = 2;
-//                 break;
-//             }
-//         }
-        
-//         // If not found in history, create new player
-//         if (!gamePlayer) {
-//             gamePlayer = new Player(names[i], i);
-//         }
-        
-//         players.push_back(gamePlayer);
-//     }
-    
-//     // Initialize queue and start game
-//     for (auto player : players) {
-//         playerQueue.enqueue(player);
-//     }
-    
-//     currentPlayer = playerQueue.dequeue();
-//     initCards();
-// }
 
 void GameManager::initCards(int total) {
     totalCards = total;
@@ -885,12 +785,6 @@ void GameManager::mergeSort(std::vector<Player*>& arr, int l, int r) {
     merge(arr, l, m, r);
 }
 
-// // Update the comparison function for current game only
-// bool GameManager::isPlayerBetter(Player* a, Player* b) {
-//     // For current game ranking, only consider current game score
-//     if (a->score != b->score) return a->score > b->score;
-//     return a->name < b->name;
-// }
 bool GameManager::isPlayerBetter(Player* a, Player* b) {
     // For historical leaderboard ranking, consider multiple factors
     if (a->score != b->score) return a->score > b->score;
@@ -942,39 +836,6 @@ std::vector<Player*> GameManager::getSortedLeaderboard() {
 std::vector<Player*> GameManager::searchByScore(int score) {
     return leaderboard.searchByScore(score);
 }
-
-// void GameManager::saveResults() {
-//     // First find the winner of current game
-//     Player* currentGameWinner = nullptr;
-//     if (!players.empty()) {
-//         currentGameWinner = players[0];
-//         for (auto p : players) {
-//             if (p->score > currentGameWinner->score) {
-//                 currentGameWinner = p;
-//             }
-//         }
-//         currentGameWinner->wins++; // Increment wins for the winner
-//     }
-    
-//     // Update each player's historical data and add to leaderboard
-//     for (auto currentPlayer : players) {
-//         // Update game history for current player
-//         currentPlayer->gamesPlayed++;
-//         currentPlayer->totalScoreSum += currentPlayer->score;
-        
-//         // Insert/Update in leaderboard
-//         leaderboard.insert(currentPlayer);
-//     }
-    
-//     // Save to file
-//     savePlayerHistory();
-    
-//     // Store last game players for continue feature
-//     lastGamePlayers.clear();
-//     for (auto player : players) {
-//         lastGamePlayers.push_back(player->name);
-//     }
-// }
 
 void GameManager::saveResults() {
     // Only save when game is actually over
@@ -1047,5 +908,4 @@ void GameManager::saveResults() {
 
 // Explicit template instantiation
 template class CustomStack<int>;
-
 template class CustomQueue<Player*>;
